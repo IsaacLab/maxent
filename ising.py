@@ -52,11 +52,11 @@ class ising:
 	def inverse_exact(self,m1,C1,error):	#Solve exact inverse ising problem with gradient descent
 		u=0.1
 		count=0
+		self.independent_model(m1)
 		self.observables()
-		fit = np.mean((self.m-m1)**2)
-		fit = 0.5*fit + 0.5*np.mean((self.C-C1)**2)
+		fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.C[np.abs(self.C)>0]-C1[np.abs(self.C)>0])))
 		fmin=fit
-
+		
 		while fit>error:
 			self.observables()
 
@@ -110,7 +110,7 @@ class ising:
 			self.J+=dJ
 			fmin=np.min(fits)
 			del fits[0]
-			fit = np.sqrt( (np.sum((self.m-m1)**2)+np.sum((self.C[np.abs(self.C)>0]-C1[np.abs(self.C)>0])**2))/float(self.size+0.5*(self.size*(self.size+1))))
+			fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.C[np.abs(self.C)>0]-C1[np.abs(self.C)>0])))
 			fits+=[fit]
 			if fit/fmin<1:
 	#			fmin=fit
@@ -298,3 +298,132 @@ def PCA(h,J):
 	return w,v
 	
 
+class kinetic_ising:
+	def __init__(self, netsize):	#Create ising model
+	
+		self.size=netsize
+		self.h=np.zeros(netsize)
+		self.J=np.zeros((netsize,netsize))
+		self.randomize_state()
+	
+	def randomize_state(self):
+		self.s = np.random.randint(0,2,self.size)*2-1
+	
+
+	def random_wiring(self):	#Set random values for h and J
+		self.h=np.random.randn(self.size)
+		self.J=np.random.randn(self.size,self.size)
+				
+	
+	def GlauberStep(self):
+		s=self.s.copy()
+		for i in range(self.size):
+			eDiff = self.deltaE(i,s)
+			if np.random.rand(1) < 1.0/(1.0+np.exp(eDiff)):    # Glauber!
+				self.s[i] = -self.s[i]
+		
+	def deltaE(self,i,s):
+		return 2*(s[i]*self.h[i] + np.sum(s[i]*(self.J[:,i]*s)))
+		
+	def observablesMC(self,T):	#Get mean and correlations from Monte Carlo simulation of the kinetic ising model
+		self.m=np.zeros(self.size)
+		self.C=np.zeros((self.size,self.size))
+		self.D=np.zeros((self.size,self.size))
+	
+		self.randomize_state()
+		for t in range(T):
+			sp.self.s.copy()
+			self.GlauberStep()
+			self.m+=self.s/float(T)
+			for i in range(self.size):
+				for j in np.arange(i+1,self.size):
+					self.C[i,j]+=self.s[i]*self.s[j]/float(T)
+			for i in range(self.size):
+				eDiff = self.deltaE(i,self.s)
+				pflip = 1.0/(1.0+np.exp(eDiff))
+				self.D[i,:]+=(self.s[i]*self.s*(1-pflip) - self.s[i]*self.s*pflip)/float(T)
+				
+		for i in range(self.size):
+			for j in np.arange(i+1,self.size):
+				self.C[i,j]-=self.m[i]*self.m[j]
+		for i in range(self.size):
+			for j in range(self.size):
+				self.D[i,j]-=self.m[i]*self.m[j]
+			
+	def observables(self):	#Get mean and correlations from Monte Carlo simulation of the kinetic ising model
+		self.m=np.zeros(self.size)
+		self.C=np.zeros((self.size,self.size))
+		self.D=np.zeros((self.size,self.size))
+	
+		for n in range(2**self.size):
+			s=bitfield(n,self.size)*2-1
+			self.m+=s*self.P[n]
+			for i in range(self.size):
+				for j in np.arange(i+1,self.size):
+					self.C[i,j]+=s[i]*s[j]*self.P[n]
+			for i in range(self.size):
+				eDiff = self.deltaE(i,s)
+				pflip = 1.0/(1.0+np.exp(eDiff))
+				self.D[i,:]+=(self.s[i]*self.s*(1-pflip) - self.s[i]*self.s*pflip)*self.P[n]
+		for i in range(self.size):
+			for j in np.arange(i+1,self.size):
+				self.C[i,j]-=self.m[i]*self.m[j]
+		for i in range(self.size):
+			for j in range(self.size):
+				self.D[i,j]-=self.m[i]*self.m[j]
+				
+		
+				
+	def pdf(self,T):	#Get mean and correlations from Monte Carlo simulation of the kinetic ising model
+		self.P=np.zeros(2**self.size)
+	
+		self.randomize_state()
+		for t in range(T):
+			self.GlauberStep()
+			n=bool2int((self.s+1)/2)
+			self.P[n]+=1.0/float(T)
+#		self.P[n]/=np.sum(self.P[n])
+
+
+	def independent_model(self, m):		#Set h to match an independen models with means m
+		self.h=np.zeros((self.size))
+		for i in range(self.size):
+			P1=0.5*(1+m[i])
+			P0=0.5*(1-m[i])
+			self.h[i]=np.log(P1/P0)
+		self.J=np.zeros((self.size,self.size))
+		
+	def inverse(self,m1,D1, error):
+		u=0.1
+		count=0
+		self.independent_model(m1)
+		self.observables()
+		print self.m
+		print m1
+		print self.C
+		print D1
+#		exit(0)
+		fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.D-D1)))
+		fmin=fit
+		
+		while fit>error:
+			Dp=self.D.copy()
+			self.observables()
+
+			dh=u*(m1-self.m)
+			self.h+=dh
+			dJ=u*(D1-self.D)
+			self.J+=dJ
+			fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.D-D1)))
+			
+			if count%10==0:
+				print self.size,count,fit
+#				print (m1 -self.m)
+				print D1
+				print self.D
+				print self.h
+				print self.J
+
+
+			count+=1
+		return fit
