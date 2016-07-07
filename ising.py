@@ -2,13 +2,15 @@ import numpy as np
 from itertools import combinations
 
 class ising:
-	def __init__(self, netsize):
+	def __init__(self, netsize):	#Create ising model
 	
 		self.size=netsize
 		self.h=np.zeros(netsize)
 		self.J=np.zeros((netsize,netsize))
-		self.s = np.random.randint(0,2,netsize)*2-1
+		self.randomize_state()
 	
+	def randomize_state(self):
+		self.s = np.random.randint(0,2,self.size)*2-1
 	
 	def pdf(self):	#Get probability density function of ising model with parameters h, J
 	
@@ -18,14 +20,14 @@ class ising:
 			self.P[n]=np.exp((np.dot(s,self.h) + np.dot(np.dot(s,self.J),s))/float(self.size))
 		self.P/=np.sum(self.P)
 
-	def random_wiring(self):
+	def random_wiring(self):	#Set random values for h and J
 		self.h=np.random.randn(self.size)
 		self.J=np.zeros((self.size,self.size))
 		for i in np.arange(self.size):
 			for j in np.arange(i+1,self.size):
 				self.J[i,j]=np.random.randn(1)
 
-	def independent_model(self, m):
+	def independent_model(self, m):		#Set h to match an independen models with means m
 		self.h=np.zeros((self.size))
 		for i in range(self.size):
 			P1=0.5*(1+m[i])
@@ -47,7 +49,7 @@ class ising:
 			for j in np.arange(i+1,self.size):
 				self.C[i,j]-=self.m[i]*self.m[j]
 				
-	def inverse_exact(self,m1,C1,error):
+	def inverse_exact(self,m1,C1,error):	#Solve exact inverse ising problem with gradient descent
 		u=0.1
 		count=0
 		self.observables()
@@ -72,39 +74,10 @@ class ising:
 			count+=1
 		return fit
 				
-	def MCsamples(self,samples):
-		self.s = np.random.randint(0,2,self.size)*2-1
-		# Main simulation loop:
-		P={}
-		for t in range(samples):
-			self.MetropolisStep()
-			n=bool2int((self.s+1)/2)
-			if n<0:
-				print n
-				print ((self.s+1)/2)
-			P[n]=np.exp((np.dot(self.s,self.h) + np.dot(np.dot(self.s,self.J),self.s))/float(self.size))
-		return P
-		
-	def observablesMC(self, ns,P):	#Get mean and correlations from Monte Carlo simulation of ising model
-
-		self.m=np.zeros((self.size))
-		self.C=np.zeros((self.size,self.size))
-		for ind,n in enumerate(ns):
-			s=bitfield(n,self.size)*2-1
-			for i in range(self.size):
-				self.m[i]+=P[ind]*s[i]
-				for j in np.arange(i+1,self.size):
-					self.C[i,j]+=P[ind]*s[i]*s[j]
-		for i in range(self.size):
-			for j in np.arange(i+1,self.size):
-				self.C[i,j]-=self.m[i]*self.m[j]
-				
-		
-				
-	def inverseMC(self,m1,C1,error):
+	def inverseMC(self,m1,C1,error):	#Solve inverse ising problem using Monte Carlo Samples
 
 		u=0.1
-		samples=2000
+		samples=200
 		nT=40
 
 		fit=1E10
@@ -144,30 +117,75 @@ class ising:
 				fitcount=0
 			else:
 				fitcount+=1
-				if fitcount>nT:
+				if fitcount>nT*2:
 					if len(Ps)/2.0**self.size<1:
 						samples+=samples/2
 					fitcount=0
-			if count%1==0:
+			if count%10==0:
 				print self.size,count,len(Ps)/2.0**self.size,samples,fit
 			count+=1
 	
 		return fit
 	
+				
+	def MCsamples(self,samples):	#Generate a series of Monte Carlo samples
+		self.randomize_state()
+		# Main simulation loop:
+		P={}
+		for t in range(samples):
+			self.MetropolisStep()
+			n=bool2int((self.s+1)/2)
+			if n<0:
+				print n
+				print ((self.s+1)/2)
+			P[n]=np.exp((np.dot(self.s,self.h) + np.dot(np.dot(self.s,self.J),self.s))/float(self.size))
+		return P
+		
+	def observablesMC(self, ns,P):	#Get mean and correlations from Monte Carlo samples
+
+		self.m=np.zeros((self.size))
+		self.C=np.zeros((self.size,self.size))
+		for ind,n in enumerate(ns):
+			s=bitfield(n,self.size)*2-1
+			for i in range(self.size):
+				self.m[i]+=P[ind]*s[i]
+				for j in np.arange(i+1,self.size):
+					self.C[i,j]+=P[ind]*s[i]*s[j]
+		for i in range(self.size):
+			for j in np.arange(i+1,self.size):
+				self.C[i,j]-=self.m[i]*self.m[j]
+				
+		
+				
+
 			
-	def MetropolisStep(self,i=None):
+	def MetropolisStep(self,i=None):	    #Execute step of Metropolis algorithm
 		if i is None:
 			i = np.random.randint(self.size)
 		eDiff = self.deltaE(i)
-		if eDiff <= 0 or np.random.rand(1) < np.exp(-eDiff):    # Metropolis!
+		if eDiff <= 0 or np.random.rand(1) < np.exp(-eDiff):    # Metropolis
 			self.s[i] = -self.s[i]
-		
-	def deltaE(self,i):
+			
+	def MetropolisStepT0(self,i=None):	    #Execute step of Metropolis algorithm with zero temperature (deterministic)
+		if i is None:
+			i = np.random.randint(self.size)
+		eDiff = self.deltaE(i)
+		if eDiff <= 0:
+			self.s[i] = -self.s[i]
+			
+	def GlauberStep(self,i=None):			#Execute step of Glauber algorithm
+		if i is None:
+			i = np.random.randint(self.size)
+		eDiff = self.deltaE(i)
+		if np.random.rand(1) < 1.0/(1.0+np.exp(eDiff)):    # Glauber
+			self.s[i] = -self.s[i]
+
+	def deltaE(self,i):		#Compute energy difference between two states with a flip of spin i
 		return 2*(self.s[i]*self.h[i] + np.sum(self.s[i]*(self.J[i,:]*self.s)+self.s[i]*(self.J[:,i]*self.s)))
  
 			
 				
-	def metastable_states(self):
+	def metastable_states(self):	#Find the metastable states of the system
 		self.pdf()
 		ms=[]
 		Pms=[]
@@ -186,7 +204,28 @@ class ising:
 				Pms+=[self.P[n]]
 		return ms,Pms
 		
+	def get_valley(self,s):		#Find an attractor "valley" starting from state s
+		ms,Pms=self.metastable_states()
+		n=bool2int((s+1)/2)
+		self.s=s.copy()
+		while not n in ms:	
+			self.MetropolisStepT0()
+			n=bool2int((self.s+1)/2)
+		ind=ms.index(n)
+		valley=ind
+		print ind,n,ms
+		return valley
 		
+	def Energy(self):	#Compute energy function
+		self.E=np.zeros(2**self.size)
+		for n in range(2**self.size):
+			s=bitfield(n,size)*2-1
+			E[n]=(np.dot(s,self.h) + np.dot(np.dot(s,self.J),s))
+		return E
+		
+	def MeanEnergy(self):	#Get mean energy of the model
+		return np.sum(self.P*self.E)
+
 	
 def bool2int(x):				#Transform bool array into positive integer
 	y = 0L
@@ -201,35 +240,6 @@ def bitfield(n,size):			#Transform positive integer into bit array
 	return np.array(x)
 
 
-def MetropolisStepT0(s,h,J,size,i=None):
-	if i is None:
-		i = np.random.randint(size)
-	eDiff = deltaE(i,s,h,J)
-	if eDiff <= 0:
-		s[i] = -s[i]
-	return s
-	
-def get_valley(s,ms,h,J,size):
-	n=bool2int((s+1)/2)
-	s1=s.copy()
-	while not n in ms:	
-		s1=MetropolisStepT0(s1,h,J,size)
-		n=bool2int((s1+1)/2)
-	ind=ms.index(n)
-	valley=ind
-	return valley
-
-def GlauberStep(s,h,J,size,i=None):
-	if i is None:
-		i = np.random.randint(size)
-	eDiff = deltaE(i,s,h,J)
-	if np.random.rand(1) < 1.0/(1.0+np.exp(eDiff)):    # Glauber!
-		s[i] = -s[i]
-	return s
-	
-
-
-	
 def subPDF(P,rng):
 	subsize=len(rng)
 	Ps=np.zeros(2**subsize)
@@ -278,15 +288,6 @@ def KL(P,Q):
 def JSD(P,Q):
 	return 0.5*(KL(P,Q)+KL(Q,P))
 
-def Energy(h,J):
-
-	size=len(h)
-	P=get_PDF(h,J,size)
-	E=0.0
-	for n in range(len(P)):
-		s=bitfield(n,size)*2-1
-		E+=P[n]*(np.dot(s,h) + np.dot(np.dot(s,J),s))
-	return E
 	
 def PCA(h,J):
 	size=len(h)
@@ -296,10 +297,4 @@ def PCA(h,J):
 	w,v = np.linalg.eig(C)
 	return w,v
 	
-def get_E(h,J):	#Get probability density function of ising model with parameters h, J
-	size=len(h)
-	E=np.zeros(2**size)
-	for n in range(2**size):
-		s=bitfield(n,size)*2-1
-		E[n]=(np.dot(s,h) + np.dot(np.dot(s,J),s))/float(size)
-	return E
+

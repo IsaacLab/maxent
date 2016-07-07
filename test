@@ -3,7 +3,7 @@
 from ising import ising
 import numpy as np
 
-size=6
+size=10
 x=ising(size)
 
 #print x.s
@@ -17,7 +17,10 @@ print x.P
 print x.m
 print x.C
 print x.metastable_states()
-#exit(0)
+x.randomize_state()
+s=x.s.copy()
+print x.get_valley(s)
+exit(0)
 x1=ising(size)
 x1.random_wiring()
 x1.observables()
@@ -25,10 +28,11 @@ m1=x1.m
 C1=x1.C
 
 x.independent_model(m1)
-error=1E-10
+error=1E-2
 fit=x.inverse_exact(m1,C1,error)
 #fit=x.inverseMC(m1,C1,error)
 
 print np.mean(np.abs(x1.h-x.h))
 print np.mean(np.abs(x1.C-x.C))
 print fit
+
