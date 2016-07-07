@@ -1,0 +1,34 @@
+#!/usr/bin/env python
+
+from ising import ising
+import numpy as np
+
+size=6
+x=ising(size)
+
+#print x.s
+x.random_wiring()
+#
+print x.h
+print x.J
+print
+x.observables()
+print x.P
+print x.m
+print x.C
+print x.metastable_states()
+#exit(0)
+x1=ising(size)
+x1.random_wiring()
+x1.observables()
+m1=x1.m
+C1=x1.C
+
+x.independent_model(m1)
+error=1E-10
+fit=x.inverse_exact(m1,C1,error)
+#fit=x.inverseMC(m1,C1,error)
+
+print np.mean(np.abs(x1.h-x.h))
+print np.mean(np.abs(x1.C-x.C))
+print fit
