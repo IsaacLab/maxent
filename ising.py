@@ -332,16 +332,18 @@ class kinetic_ising:
 	
 		self.randomize_state()
 		for t in range(T):
-			sp.self.s.copy()
 			self.GlauberStep()
 			self.m+=self.s/float(T)
 			for i in range(self.size):
 				for j in np.arange(i+1,self.size):
 					self.C[i,j]+=self.s[i]*self.s[j]/float(T)
+#			print
+#			print self.s
 			for i in range(self.size):
 				eDiff = self.deltaE(i,self.s)
 				pflip = 1.0/(1.0+np.exp(eDiff))
-				self.D[i,:]+=(self.s[i]*self.s*(1-pflip) - self.s[i]*self.s*pflip)/float(T)
+				self.D[:,i]+=(self.s[i]*self.s*(1-pflip) - self.s[i]*self.s*pflip)/float(T)
+#				print (self.s[i]*self.s*(1-pflip) - self.s[i]*self.s*pflip)
 				
 		for i in range(self.size):
 			for j in np.arange(i+1,self.size):
@@ -364,7 +366,8 @@ class kinetic_ising:
 			for i in range(self.size):
 				eDiff = self.deltaE(i,s)
 				pflip = 1.0/(1.0+np.exp(eDiff))
-				self.D[i,:]+=(self.s[i]*self.s*(1-pflip) - self.s[i]*self.s*pflip)*self.P[n]
+				self.D[:,i]+=(s[i]*s*(1-pflip) - s[i]*s*pflip)*self.P[n]
+
 		for i in range(self.size):
 			for j in np.arange(i+1,self.size):
 				self.C[i,j]-=self.m[i]*self.m[j]
@@ -394,14 +397,14 @@ class kinetic_ising:
 		self.J=np.zeros((self.size,self.size))
 		
 	def inverse(self,m1,D1, error):
-		u=0.1
+		u=0.4
 		count=0
 		self.independent_model(m1)
 		self.observables()
-		print self.m
-		print m1
-		print self.C
-		print D1
+#		print self.m
+#		print m1
+#		print self.C
+#		print D1
 #		exit(0)
 		fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.D-D1)))
 		fmin=fit
@@ -418,11 +421,11 @@ class kinetic_ising:
 			
 			if count%10==0:
 				print self.size,count,fit
-#				print (m1 -self.m)
-				print D1
-				print self.D
-				print self.h
-				print self.J
+##				print (m1 -self.m)
+#				print D1
+#				print self.D
+#				print self.h
+#				print self.J
 
 
 			count+=1

@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+
+from ising import ising, kinetic_ising, Entropy
+import numpy as np
+
+size=4
+
+
+
+
+y1=kinetic_ising(size)
+y1.random_wiring()
+#for i in range(size):
+#	y1.J[i,i]=0
+#	y1.h[i]=0
+print
+y1.observablesMC(10000)
+
+
+m1=y1.m.copy()
+C1=y1.C.copy()
+D1=y1.D.copy()
+print m1
+print C1
+print D1
+
+
+error=1E-5
+x=ising(size)
+fit=x.inverse_exact(m1,C1,error)
+
+x.pdf()
+
+
+y=kinetic_ising(size)
+y.P=x.P.copy()
+#y.P=y1.P.copy()
+fit=y.inverse(m1,D1,error)
+y.observables()
+
+print
+print
+print y.m
+print y.C
+print y.D
+print
+print np.max(np.abs(C1-y.C))
+print 'fit',fit
+
+
+#fit=x.inverse_exact(m1,C1,error)
+#x.observables()
+#print y.m
+#print y.C
+#print y.D
+#print
+
+#y.pdf(10000)
+#	
+#y.observables()
+#print
+#print y.m
+#print y.C
+#print y.D
+
+#y.P=x.P
+#y.observables()
+#print
+#print y.m
+#print y.C
+#print y.D
