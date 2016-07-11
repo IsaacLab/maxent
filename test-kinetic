@@ -3,69 +3,65 @@
 from ising import ising, kinetic_ising, Entropy
 import numpy as np
 
-size=4
-
-
-
-
+size=10
+T=2000
 y1=kinetic_ising(size)
 y1.random_wiring()
 #for i in range(size):
-#	y1.J[i,i]=0
 #	y1.h[i]=0
-print
-y1.observablesMC(10000)
+#	y1.J[i,i]=0
+
+##print y1.J
+#y1.pdfMC(1000)
+#PMC=y1.P.copy()
+#y1.pdf()
+#print np.mean(np.sqrt(np.abs(PMC -y1.P)**2)),np.max(PMC -y1.P)
+##exit(0)
+#y1.uniform_pdf()
+y1.observablesMC(T)
+
+print y1.P
+print y1.m
+print y1.D
 
 
+#exit(0)
+
+error=1E-3
 m1=y1.m.copy()
-C1=y1.C.copy()
+#C1=y1.C.copy()
 D1=y1.D.copy()
-print m1
-print C1
-print D1
-
-
-error=1E-5
-x=ising(size)
-fit=x.inverse_exact(m1,C1,error)
-
-x.pdf()
-
 
 y=kinetic_ising(size)
-y.P=x.P.copy()
-#y.P=y1.P.copy()
+y.P=y1.P.copy()
+
+y.independent_model(m1)
 fit=y.inverse(m1,D1,error)
-y.observables()
+print fit
+print np.mean(np.sqrt(np.abs(y.h-y1.h)**2)),np.max(np.abs(y.h-y1.h))
+print np.mean(np.sqrt(np.abs(y.J-y1.J)**2)),np.max(np.abs(y.J-y1.J))
+print
+print y.h
+print y1.h
 
 print
-print
-print y.m
-print y.C
-print y.D
-print
-print np.max(np.abs(C1-y.C))
-print 'fit',fit
+print y.J
+print y1.J
+#print np.mean(np.sqrt(np.abs(y.P-y1.P)**2)),np.max(np.abs(y.P-y1.P))
 
+#exit(0)
 
-#fit=x.inverse_exact(m1,C1,error)
-#x.observables()
-#print y.m
-#print y.C
-#print y.D
-#print
+#P=y.P.copy()
+#y.pdfMC(10000)
+#print np.mean(np.sqrt(np.abs(y.P-P)**2)),np.max(np.abs(y.P-P))
+#y.observablesMC(1000)
+#y1.observablesMC(1000)
 
-#y.pdf(10000)
-#	
-#y.observables()
-#print
-#print y.m
-#print y.C
-#print y.D
+##print np.max(np.abs(y.D-y1.D))
+##print np.max(np.abs(y.m-y1.m))
 
-#y.P=x.P
-#y.observables()
-#print
-#print y.m
-#print y.C
-#print y.D
+#y.observablesMC(1000)
+#y1.observablesMC(1000)
+
+#print np.max(np.abs(y.D-y1.D))
+#print np.max(np.abs(y.m-y1.m))

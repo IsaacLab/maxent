@@ -11,13 +11,14 @@ class ising:
 	
 	def randomize_state(self):
 		self.s = np.random.randint(0,2,self.size)*2-1
+
 	
 	def pdf(self):	#Get probability density function of ising model with parameters h, J
 	
 		self.P=np.zeros(2**self.size)
 		for n in range(2**self.size):
 			s=bitfield(n,self.size)*2-1
-			self.P[n]=np.exp((np.dot(s,self.h) + np.dot(np.dot(s,self.J),s))/float(self.size))
+			self.P[n]=np.exp((np.dot(s,self.h) + np.dot(np.dot(s,self.J),s)))
 		self.P/=np.sum(self.P)
 
 	def random_wiring(self):	#Set random values for h and J
@@ -138,7 +139,7 @@ class ising:
 			if n<0:
 				print n
 				print ((self.s+1)/2)
-			P[n]=np.exp((np.dot(self.s,self.h) + np.dot(np.dot(self.s,self.J),self.s))/float(self.size))
+			P[n]=np.exp((np.dot(self.s,self.h) + np.dot(np.dot(self.s,self.J),self.s)))
 		return P
 		
 	def observablesMC(self, ns,P):	#Get mean and correlations from Monte Carlo samples
@@ -308,18 +309,49 @@ class kinetic_ising:
 	
 	def randomize_state(self):
 		self.s = np.random.randint(0,2,self.size)*2-1
-	
+		
+	def pdf(self):	#Get probability density function of ising model with parameters h, J
+		self.P=np.zeros(2**self.size)
+		for n in range(2**self.size):
+			s=bitfield(n,self.size)*2-1
+			E=np.dot(s,self.h) + np.dot(np.dot(s,self.J),s)
+			self.P[n]=np.exp(E)
+		self.P/=np.sum(self.P)
+		
+	def uniform_pdf(self):	#Get probability density function of ising model with parameters h, J
+		self.P=np.ones(2**self.size)/float(2**self.size)
+		
+	def pdfMC(self,T):	#Get mean and correlations from Monte Carlo simulation of the kinetic ising model
+		self.P=np.zeros(2**self.size)
+		self.randomize_state()
+		for t in range(T):
+			self.GlauberStep()
+			n=bool2int((self.s+1)/2)
+			self.P[n]+=1.0/float(T)
 
 	def random_wiring(self):	#Set random values for h and J
 		self.h=np.random.randn(self.size)
 		self.J=np.random.randn(self.size,self.size)
+#		self.J=np.zeros((self.size,self.size))
+#		for i in range(self.size):
+#			for j in np.arange(i+1,self.size):
+#				x=np.random.randn(1)
+#				self.J[i,j]=x
+#				self.J[j,i]=x
 				
-	
+			
+#	def GlauberStep(self,i=None):			#Execute step of Glauber algorithm
+#		if i is None:
+#			i = np.random.randint(self.size)
+#		eDiff = self.deltaE(i,self.s)
+#		if np.random.rand(1) < 1.0/(1.0+np.exp(eDiff)):    # Glauber
+#			self.s[i] = -self.s[i]
+#			
 	def GlauberStep(self):
 		s=self.s.copy()
 		for i in range(self.size):
 			eDiff = self.deltaE(i,s)
-			if np.random.rand(1) < 1.0/(1.0+np.exp(eDiff)):    # Glauber!
+			if np.random.rand(1) < 1.0/(1.0+np.exp(eDiff)):    # Glauber
 				self.s[i] = -self.s[i]
 		
 	def deltaE(self,i,s):
@@ -329,21 +361,24 @@ class kinetic_ising:
 		self.m=np.zeros(self.size)
 		self.C=np.zeros((self.size,self.size))
 		self.D=np.zeros((self.size,self.size))
+		self.P=np.zeros(2**self.size)
 	
 		self.randomize_state()
 		for t in range(T):
+			sp=self.s.copy()
 			self.GlauberStep()
+			n=bool2int((self.s+1)/2)
+			self.P[n]+=1.0/float(T)
+			
 			self.m+=self.s/float(T)
 			for i in range(self.size):
 				for j in np.arange(i+1,self.size):
 					self.C[i,j]+=self.s[i]*self.s[j]/float(T)
-#			print
-#			print self.s
 			for i in range(self.size):
-				eDiff = self.deltaE(i,self.s)
-				pflip = 1.0/(1.0+np.exp(eDiff))
-				self.D[:,i]+=(self.s[i]*self.s*(1-pflip) - self.s[i]*self.s*pflip)/float(T)
-#				print (self.s[i]*self.s*(1-pflip) - self.s[i]*self.s*pflip)
+				self.D[:,i]+=self.s[i]*sp/float(T)
+#				eDiff = self.deltaE(i,self.s)
+#				pflip = 1.0/(1.0+np.exp(eDiff))
+#				self.D[:,i]+=(self.s[i]*self.s*(1-pflip) - self.s[i]*self.s*pflip)/float(T)
 				
 		for i in range(self.size):
 			for j in np.arange(i+1,self.size):
@@ -354,38 +389,20 @@ class kinetic_ising:
 			
 	def observables(self):	#Get mean and correlations from Monte Carlo simulation of the kinetic ising model
 		self.m=np.zeros(self.size)
-		self.C=np.zeros((self.size,self.size))
 		self.D=np.zeros((self.size,self.size))
-	
+		N=float(2**self.size)
 		for n in range(2**self.size):
 			s=bitfield(n,self.size)*2-1
-			self.m+=s*self.P[n]
 			for i in range(self.size):
-				for j in np.arange(i+1,self.size):
-					self.C[i,j]+=s[i]*s[j]*self.P[n]
-			for i in range(self.size):
+#				self.m[i]+=s[i]*self.P[n]
 				eDiff = self.deltaE(i,s)
 				pflip = 1.0/(1.0+np.exp(eDiff))
 				self.D[:,i]+=(s[i]*s*(1-pflip) - s[i]*s*pflip)*self.P[n]
-
-		for i in range(self.size):
-			for j in np.arange(i+1,self.size):
-				self.C[i,j]-=self.m[i]*self.m[j]
+				self.m[i]+=(s[i]*(1-pflip) - s[i]*pflip)*self.P[n]
 		for i in range(self.size):
 			for j in range(self.size):
 				self.D[i,j]-=self.m[i]*self.m[j]
 				
-		
-				
-	def pdf(self,T):	#Get mean and correlations from Monte Carlo simulation of the kinetic ising model
-		self.P=np.zeros(2**self.size)
-	
-		self.randomize_state()
-		for t in range(T):
-			self.GlauberStep()
-			n=bool2int((self.s+1)/2)
-			self.P[n]+=1.0/float(T)
-#		self.P[n]/=np.sum(self.P[n])
 
 
 	def independent_model(self, m):		#Set h to match an independen models with means m
@@ -397,15 +414,9 @@ class kinetic_ising:
 		self.J=np.zeros((self.size,self.size))
 		
 	def inverse(self,m1,D1, error):
-		u=0.4
+		u=0.1
 		count=0
-		self.independent_model(m1)
 		self.observables()
-#		print self.m
-#		print m1
-#		print self.C
-#		print D1
-#		exit(0)
 		fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.D-D1)))
 		fmin=fit
 		
@@ -421,12 +432,7 @@ class kinetic_ising:
 			
 			if count%10==0:
 				print self.size,count,fit
-##				print (m1 -self.m)
-#				print D1
-#				print self.D
-#				print self.h
-#				print self.J
-
+				
 
 			count+=1
 		return fit
