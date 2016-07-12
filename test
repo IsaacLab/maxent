@@ -1,38 +1,202 @@
 #!/usr/bin/env python
 
-from ising import ising
+from ising import ising,bitfield
+from ising import Entropy
 import numpy as np
 
-size=10
+size=7
+T=200
+error=1E-5
+
 x=ising(size)
-
-#print x.s
 x.random_wiring()
-#
-print x.h
-print x.J
-print
-x.observables()
-print x.P
-print x.m
-print x.C
-print x.metastable_states()
-x.randomize_state()
-s=x.s.copy()
-print x.get_valley(s)
-exit(0)
+ns=x.generateMCsamples(T)
+#print ns
+#exit(0)
+
+m1=np.zeros(size)
+C1=np.zeros((size,size))
+Pr=np.zeros(2**size)
+for n in ns:
+	Pr[n]+=1
+
+	s=bitfield(n,size)*2-1
+	for i in range(size):
+		m1[i]+=s[i]/float(T)
+		for j in np.arange(i+1,size):
+			C1[i,j]+=s[i]*s[j]/float(T)
+for i in range(size):
+		for j in np.arange(i+1,size):
+			C1[i,j]-=m1[i]*m1[j]
+Pr/=np.sum(Pr)	
+
+	
+print m1
+print C1
+
+
+#x.observables()
+#print x.m
+#print x.C
+#print 
+#print x.h
+#print x.J
+#exit(0)
+
+samples=np.unique(ns)
+
+#print len(samples)/2.0**size
+#exit(0)
+#x.observables()
+#print x.m
+#print x.C
+
+
 x1=ising(size)
-x1.random_wiring()
+x1.independent_model(m1)
+x1.pdf()
+P1=x1.P.copy()
+#print Pr
+#print P1
 x1.observables()
-m1=x1.m
-C1=x1.C
+#print m1
+#print x1.m
 
-x.independent_model(m1)
-error=1E-2
-fit=x.inverse_exact(m1,C1,error)
-#fit=x.inverseMC(m1,C1,error)
 
-print np.mean(np.abs(x1.h-x.h))
-print np.mean(np.abs(x1.C-x.C))
-print fit
+fit=x1.inverse_exact(m1,C1,error)
+
+S1=Entropy(P1)
+Sr=Entropy(Pr)
+x1.pdf()
+P2=x1.P.copy()
+S2=Entropy(P2)
+I=S1-Sr
+I2=S1-S2
+
+print S1,S2,Sr
+x.pdf()
+print Entropy(x.P.copy())
+#print x.J
+#print x1.J
+#exit(0)
+print I2,I
+print I2/I
+print len(samples)/2.0**size
+
+#exit(0)
+
+x2=ising(size)
+x2.independent_model(m1)
+
+fit=x2.inverse_sample(m1,C1,samples,error)
+
+#x2.pdf()
+#x2.observables()
+#print
+#print x2.m-m1
+#print x2.C-C1
+#fit = max (np.max(np.abs(x2.m-m1)),np.max(np.abs(x2.C-C1)))
+#print fit
+
+
+#fit=x2.inverse_exact(m1,C1,error)
+#print
+#print x.m
+#print x.J
+#print x1.m
+#print x1.J
+#print x2.m
+#print x2.J
+x1.observables()
+x2.observables()
+print
+print np.sqrt(np.mean(np.abs(x1.h-x.h)**2))
+print np.sqrt(np.mean(np.abs(x1.J-x.J)**2))
+
+print 
+print np.sqrt(np.mean(np.abs(x2.h-x.h)**2))
+print np.sqrt(np.mean(np.abs(x2.J-x.J)**2))
+
+x.pdf()
+x1.pdf()
+x2.pdf()
+print
+print len(samples)/2.0**size
+#print Pr
+#print P1
+
+
+S21=Entropy(x1.P.copy())
+S22=Entropy(x2.P.copy())
+print S1,S21,S22,Sr
+print S1-Sr
+print S1-S21
+print S1-S22
+print
+print (S1-S21)/(S1-Sr)
+print (S1-S22)/(S1-Sr)
+
+
+#x1.pdf()
+#x1.observables()
+#x2.pdf()
+#x2.observables()
+
+#print
+#print x1.m-x2.m
+#print x1.C-x2.C
+#x2.pdf()
+#x2.observables()
+#x1.pdf()
+#x2.pdf()
+#print
+#print len(samples)/2.0**size
+#print Entropy(x1.P)
+#print Entropy(x2.P)
+##print
+##print x2.m
+##print x2.C
+##x2.observables()
+##print
+##print x2.m
+##print x2.C
+
+
+
+###fit=x.inverseMC(m1,C1,error)
+
+
+##x=ising(size)
+
+###print x.s
+##x.random_wiring()
+###
+##print x.h
+##print x.J
+##print
+##x.observables()
+##print x.P
+##print x.m
+##print x.C
+##print x.metastable_states()
+##x.randomize_state()
+##s=x.s.copy()
+##print x.get_valley(s)
+##exit(0)
+##x1=ising(size)
+##x1.random_wiring()
+##x1.observables()
+##m1=x1.m
+##C1=x1.C
+
+##x.independent_model(m1)
+##error=1E-2
+##fit=x.inverse_exact(m1,C1,error)
+####fit=x.inverseMC(m1,C1,error)
+
+
+##print np.mean(np.abs(x1.h-x.h))
+##print np.mean(np.abs(x1.C-x.C))
+##print fit
+
 

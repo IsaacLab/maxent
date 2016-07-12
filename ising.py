@@ -22,18 +22,16 @@ class ising:
 		self.P/=np.sum(self.P)
 
 	def random_wiring(self):	#Set random values for h and J
-		self.h=np.random.randn(self.size)
+		self.h=np.random.rand(self.size)-0.5
 		self.J=np.zeros((self.size,self.size))
 		for i in np.arange(self.size):
 			for j in np.arange(i+1,self.size):
-				self.J[i,j]=np.random.randn(1)
+				self.J[i,j]=np.random.rand(1)*1-0.5
 
 	def independent_model(self, m):		#Set h to match an independen models with means m
 		self.h=np.zeros((self.size))
 		for i in range(self.size):
-			P1=0.5*(1+m[i])
-			P0=0.5*(1-m[i])
-			self.h[i]=np.log(P1/P0)
+			self.h[i]=-0.5*np.log((1-m[i])/(1+m[i]))
 		self.J=np.zeros((self.size,self.size))
 		
 	def observables(self):		#Get mean and correlations from probability density function
@@ -54,8 +52,9 @@ class ising:
 		u=0.1
 		count=0
 		self.independent_model(m1)
+		
 		self.observables()
-		fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.C[np.abs(self.C)>0]-C1[np.abs(self.C)>0])))
+		fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.C-C1)))
 		fmin=fit
 		
 		while fit>error:
@@ -66,9 +65,9 @@ class ising:
 			dJ=u*(C1-self.C)
 
 			self.J+=dJ
-			fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.C[np.abs(self.C)>0]-C1[np.abs(self.C)>0])))
+			fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.C-C1)))
 			
-			if count%10==0:
+			if count%100==0:
 				print self.size,count,fit
 
 
@@ -103,7 +102,7 @@ class ising:
 			ns=Ps.keys()
 			Pmc=Ps.values()
 			Pmc/=np.sum(Pmc)
-			self.observablesMC(ns,Pmc)
+			self.observables_sample(ns,Pmc)
 	
 			dh=u*(m1-self.m)
 			self.h+=dh
@@ -128,6 +127,31 @@ class ising:
 	
 		return fit
 	
+	
+	def inverse_sample(self,m1,C1,samples,error):	#Solve inverse ising problem using Monte Carlo Samples
+
+		u=0.05
+
+		fit=1E10
+		fmin=fit
+		fitcount=0
+
+		count=0
+		while fit>error:
+
+			self.observables_sample(samples)
+	
+			dh=u*(m1-self.m)
+			self.h+=dh
+			dJ=u*(C1-self.C)
+			self.J+=dJ
+			fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.C-C1)))
+
+			if count%100==0:
+				print self.size,count,fit
+			count+=1
+	
+		return fit
 				
 	def MCsamples(self,samples):	#Generate a series of Monte Carlo samples
 		self.randomize_state()
@@ -142,8 +166,35 @@ class ising:
 			P[n]=np.exp((np.dot(self.s,self.h) + np.dot(np.dot(self.s,self.J),self.s)))
 		return P
 		
-	def observablesMC(self, ns,P):	#Get mean and correlations from Monte Carlo samples
-
+	def generateMCsamples(self,T):	#Generate a series of Monte Carlo samples
+		self.randomize_state()
+		# Main simulation loop:
+		samples=[]
+		for t in range(T):
+			self.MetropolisStep()
+			n=bool2int((self.s+1)/2)
+			samples+=[n]
+#			if not n in P:
+#				P[n]=1.0/float(T)
+#			else:
+#				P[n]+=1.0/float(T)
+##			P[n]=np.exp((np.dot(self.s,self.h) + np.dot(np.dot(self.s,self.J),self.s)))
+#		samples=np.unique(samples)
+		return samples
+		
+	def observables_sample(self, samples):	#Get mean and correlations from system states sample
+		ns=np.unique(samples)
+		P=np.zeros(len(ns))
+		
+		for ind,n in enumerate(ns):
+			s=bitfield(n,self.size)*2-1
+			P[ind]=np.exp((np.dot(s,self.h) + np.dot(np.dot(s,self.J),s)))
+#		print samples
+#		print self.h
+#		print self.J
+#		print P
+		P/=np.sum(P)
+		
 		self.m=np.zeros((self.size))
 		self.C=np.zeros((self.size,self.size))
 		for ind,n in enumerate(ns):
@@ -156,9 +207,6 @@ class ising:
 			for j in np.arange(i+1,self.size):
 				self.C[i,j]-=self.m[i]*self.m[j]
 				
-		
-				
-
 			
 	def MetropolisStep(self,i=None):	    #Execute step of Metropolis algorithm
 		if i is None:
@@ -228,18 +276,18 @@ class ising:
 		return np.sum(self.P*self.E)
 
 	
-def bool2int(x):				#Transform bool array into positive integer
-	y = 0L
-	for i,j in enumerate(np.array(x)[::-1]):
-#        y += j<<i
-		y += long(j*2**i)
-	return y
+def discretefield(n,q,size):
+	x=np.zeros(size,int)
+	x[-1]=n
+	d=0
+	for i in range(size):
+		r=(x[-i-1]+d)%q
+		d=np.floor((x[-i-1]+d)/q)
+		x[-i-1]=r
+	return x
     
-def bitfield(n,size):			#Transform positive integer into bit array
-	x = [int(x) for x in bin(n)[2:]]
-	x = [0]*(size-len(x)) + x
-	return np.array(x)
-
+def array2int(s,q,size):
+	return int(np.dot(s,q**np.arange(size)[::-1]))
 
 def subPDF(P,rng):
 	subsize=len(rng)
@@ -254,7 +302,7 @@ def Entropy(P):
 	E=0.0
 	for n in range(len(P)):
 		if P[n]>0:
-			E+=-P[n]*np.log2(P[n])
+			E+=-P[n]*np.log(P[n])
 	return E
 	
 
@@ -404,13 +452,10 @@ class kinetic_ising:
 				self.D[i,j]-=self.m[i]*self.m[j]
 				
 
-
 	def independent_model(self, m):		#Set h to match an independen models with means m
 		self.h=np.zeros((self.size))
 		for i in range(self.size):
-			P1=0.5*(1+m[i])
-			P0=0.5*(1-m[i])
-			self.h[i]=np.log(P1/P0)
+			self.h[i]=-0.5*np.log((1-m[i])/(1+m[i]))
 		self.J=np.zeros((self.size,self.size))
 		
 	def inverse(self,m1,D1, error):
