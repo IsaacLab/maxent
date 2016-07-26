@@ -3,9 +3,10 @@
 from ising import ising,bitfield
 from ising import Entropy
 import numpy as np
+import time
 
 size=7
-T=200
+T=2000
 error=1E-5
 
 x=ising(size)
@@ -62,27 +63,32 @@ x1.observables()
 #print m1
 #print x1.m
 
-
+start_time = time.time()
 fit=x1.inverse_exact(m1,C1,error)
+time1=time.time() - start_time
 
-S1=Entropy(P1)
-Sr=Entropy(Pr)
-x1.pdf()
-P2=x1.P.copy()
-S2=Entropy(P2)
-I=S1-Sr
-I2=S1-S2
 
-print S1,S2,Sr
-x.pdf()
-print Entropy(x.P.copy())
-#print x.J
-#print x1.J
-#exit(0)
-print I2,I
-print I2/I
-print len(samples)/2.0**size
+start_time = time.time()
+fit=x1.inverse_exact(m1,C1,error,mode='coordinated-descent')
+time2=time.time() - start_time
+print("--- %s seconds ---" % (time1))
+print("--- %s seconds ---" % (time2))
+#print fit
+#S1=Entropy(P1)
+#Sr=Entropy(Pr)
+#x1.pdf()
+#P2=x1.P.copy()
+#S2=Entropy(P2)
+#I=S1-Sr
+#I2=S1-S2
 
+#print S1,S2,Sr
+#x.pdf()
+##print Entropy(x.P.copy())
+##print I2,I
+#print I2/I
+#print fit
+exit(0)
 #exit(0)
 
 x2=ising(size)

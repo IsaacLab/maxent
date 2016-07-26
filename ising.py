@@ -1,5 +1,6 @@
 import numpy as np
 from itertools import combinations
+import matplotlib.pyplot as plt
 
 class ising:
 	def __init__(self, netsize):	#Create ising model
@@ -48,7 +49,7 @@ class ising:
 			for j in np.arange(i+1,self.size):
 				self.C[i,j]-=self.m[i]*self.m[j]
 				
-	def inverse_exact(self,m1,C1,error):	#Solve exact inverse ising problem with gradient descent
+	def inverse_exact(self,m1,C1,error,mode='gradient-descent'):	#Solve exact inverse ising problem with gradient descent
 		u=0.1
 		count=0
 		self.independent_model(m1)
@@ -57,21 +58,111 @@ class ising:
 		fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.C-C1)))
 		fmin=fit
 		
+		
 		while fit>error:
-			self.observables()
-
-			dh=u*(m1-self.m)
-			self.h+=dh
-			dJ=u*(C1-self.C)
-
-			self.J+=dJ
-			fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.C-C1)))
 			
-			if count%100==0:
-				print self.size,count,fit
+			if mode=='gradient-descent':
+			
+				dh=u*(m1-self.m)
+				self.h+=dh
+				dJ=u*(C1-self.C)
+				self.J+=dJ
+			elif mode=='coordinated-descent':
+			
+#				beta=fit*0.001
+				beta=error**2
+				
+				def compF(d,p,ql,l,beta):
+					return -d*p +np.log(np.exp(-d) + (np.exp(d)-np.exp(-d))*(ql+1)*0.5)+beta*(np.abs(l+d)-np.abs(l))
 
+				def Fmin(p,ql,l,beta):
+					D=[]
+					for B in [1,-1]:
+						nden=(1+ql)*(1-p+B*beta)
+						if not nden==0:
+							nnum=(1-ql)*(1+p-B*beta)
+							if nnum/nden>0:
+								D1=0.5*np.log(nnum/nden)
+								if B*(l+D1)>0:
+									D+=[D1]
+					if len(D)==1:
+						return D[0]
+					else:
+#						print compF(-l,p,ql,l,beta)
+						print 'error',len(D)
+#						
+#						plt.figure()
+##						print l
+##						print ql,p
+#						d=np.arange(-2,2,0.001)
+#						plt.plot(d,compF(d,p,ql,l,beta))
+#						plt.show()
+						
+						exit(0)
 
+				inds=[]
+				p=[]
+				ql=[]
+				l=[]
+				for i in range(self.size):
+					inds+=[i]
+					p+=[m1[i]]
+					ql+=[self.m[i]]
+					l+=[self.h[i]]
+				for i in range(self.size):
+					for j in np.arange(i+1,self.size):
+						inds+=[(i,j)]
+						p+=[C1[i,j]]
+						ql+=[self.C[i,j]]
+						l+=[self.J[i,j]]
+				N=len(inds)
+				F=np.zeros(N)
+				d=np.zeros(N)
+				for i in range(len(inds)):
+					d[i]=Fmin(p[i],ql[i],l[i],beta)
+					F[i]=compF(d[i],p[i],ql[i],l[i],beta)
+
+				ind=np.argmin(F)
+	#			print ind
+				D=d[ind]
+
+#				for ind in range(len(inds)):
+				if ind<self.size:
+					self.h[inds[ind]]+=d[ind]*1
+				else:
+					self.J[inds[ind]]+=d[ind]*1
+
+#			
+			self.observables()
+			fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.C-C1)))
 			count+=1
+			if count%10==0:
+				print self.size,count,fit
+				
+#				print
+#				print F
+#				print d
+#				print ind
+#				
+#				print
+#				print (m1-self.m)
+#				print (C1-self.C)
+#				print self.h
+#				print self.J
+#				
+#				di=np.arange(D-1,D+1,0.001)
+#				plt.figure()
+#				plt.plot(di,-di*p[ind] + np.log(1+(np.exp(di)-1)*ql[ind])+error*(np.abs(l[ind]+di)-np.abs(l[ind])))
+#				plt.plot(D,-D*p[ind] + np.log(1+(np.exp(D)-1)*ql[ind])+error*(np.abs(l[ind]+D)-np.abs(l[ind])),'o')
+#				
+##				ind=2
+##				D=d[ind]
+##				di=np.arange(D-1,D+1,0.001)
+##				plt.figure()
+##				plt.plot(di,-di*p[ind] + np.log(1+(np.exp(di)-1)*ql[ind])+error*(np.abs(l[ind]+di)-np.abs(l[ind])))
+##				plt.plot(D,-D*p[ind] + np.log(1+(np.exp(D)-1)*ql[ind])+error*(np.abs(l[ind]+D)-np.abs(l[ind])),'o')
+#				plt.show()
+			
 		return fit
 				
 	def inverseMC(self,m1,C1,error):	#Solve inverse ising problem using Monte Carlo Samples
@@ -83,7 +174,7 @@ class ising:
 		fit=1E10
 		fmin=fit
 		fitcount=0
-
+		self.independent_model(m1)
 #		Ps = self.MCsamples(samples)
 		PS=[]
 		fits=[]
@@ -128,26 +219,32 @@ class ising:
 		return fit
 	
 	
-	def inverse_sample(self,m1,C1,samples,error):	#Solve inverse ising problem using Monte Carlo Samples
+	def inverse_sampler(self,m1,C1,error):	#Solve inverse ising problem using Monte Carlo Samples
 
 		u=0.05
 
 		fit=1E10
 		fmin=fit
 		fitcount=0
-
+		T=100
+		nT=50
+		S=[]
+		for n in range(nT):
+			S+=[self.generateMCsamples(T)]
 		count=0
 		while fit>error:
-
+			del S[0]
+			S+=[self.generateMCsamples(T)]
+			samples=np.unique(S)
 			self.observables_sample(samples)
-	
+
 			dh=u*(m1-self.m)
 			self.h+=dh
 			dJ=u*(C1-self.C)
 			self.J+=dJ
 			fit = max (np.max(np.abs(self.m-m1)),np.max(np.abs(self.C-C1)))
 
-			if count%100==0:
+			if count%10==0:
 				print self.size,count,fit
 			count+=1
 	
@@ -155,7 +252,7 @@ class ising:
 				
 	def MCsamples(self,samples):	#Generate a series of Monte Carlo samples
 		self.randomize_state()
-		# Main simulation loop:
+		# Main    simulation loop:
 		P={}
 		for t in range(samples):
 			self.MetropolisStep()
@@ -171,15 +268,10 @@ class ising:
 		# Main simulation loop:
 		samples=[]
 		for t in range(T):
-			self.MetropolisStep()
+#			self.MetropolisStep()
+			self.SequentialGlauberStep()
 			n=bool2int((self.s+1)/2)
 			samples+=[n]
-#			if not n in P:
-#				P[n]=1.0/float(T)
-#			else:
-#				P[n]+=1.0/float(T)
-##			P[n]=np.exp((np.dot(self.s,self.h) + np.dot(np.dot(self.s,self.J),self.s)))
-#		samples=np.unique(samples)
 		return samples
 		
 	def observables_sample(self, samples):	#Get mean and correlations from system states sample
@@ -189,10 +281,6 @@ class ising:
 		for ind,n in enumerate(ns):
 			s=bitfield(n,self.size)*2-1
 			P[ind]=np.exp((np.dot(s,self.h) + np.dot(np.dot(s,self.J),s)))
-#		print samples
-#		print self.h
-#		print self.J
-#		print P
 		P/=np.sum(P)
 		
 		self.m=np.zeros((self.size))
@@ -228,6 +316,11 @@ class ising:
 		eDiff = self.deltaE(i)
 		if np.random.rand(1) < 1.0/(1.0+np.exp(eDiff)):    # Glauber
 			self.s[i] = -self.s[i]
+			
+	def SequentialGlauberStep(self):
+		for i in np.random.permutation(self.size):
+			self.GlauberStep(i)
+
 
 	def deltaE(self,i):		#Compute energy difference between two states with a flip of spin i
 		return 2*(self.s[i]*self.h[i] + np.sum(self.s[i]*(self.J[i,:]*self.s)+self.s[i]*(self.J[:,i]*self.s)))
@@ -276,18 +369,17 @@ class ising:
 		return np.sum(self.P*self.E)
 
 	
-def discretefield(n,q,size):
-	x=np.zeros(size,int)
-	x[-1]=n
-	d=0
-	for i in range(size):
-		r=(x[-i-1]+d)%q
-		d=np.floor((x[-i-1]+d)/q)
-		x[-i-1]=r
-	return x
+def bool2int(x):				#Transform bool array into positive integer
+    y = 0L
+    for i,j in enumerate(np.array(x)[::-1]):
+#        y += j<<i
+        y += long(j*2**i)
+    return y
     
-def array2int(s,q,size):
-	return int(np.dot(s,q**np.arange(size)[::-1]))
+def bitfield(n,size):			#Transform positive integer into bit array
+    x = [int(x) for x in bin(n)[2:]]
+    x = [0]*(size-len(x)) + x
+    return np.array(x)
 
 def subPDF(P,rng):
 	subsize=len(rng)
