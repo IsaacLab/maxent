@@ -36,173 +36,37 @@ print m1
 print C1
 
 
-#x.observables()
-#print x.m
-#print x.C
-#print 
-#print x.h
-#print x.J
-#exit(0)
-
 samples=np.unique(ns)
-
-#print len(samples)/2.0**size
-#exit(0)
-#x.observables()
-#print x.m
-#print x.C
 
 
 x1=ising(size)
 x1.independent_model(m1)
 x1.pdf()
 P1=x1.P.copy()
-#print Pr
-#print P1
 x1.observables()
-#print m1
-#print x1.m
 
 start_time = time.time()
 fit=x1.inverse_exact(m1,C1,error)
 time1=time.time() - start_time
 
 
-start_time = time.time()
-fit=x1.inverse_exact(m1,C1,error,mode='coordinated-descent')
-time2=time.time() - start_time
-print("--- %s seconds ---" % (time1))
-print("--- %s seconds ---" % (time2))
+#start_time = time.time()
+#fit=x1.inverse_exact(m1,C1,error,mode='coordinated-descent')
+#time2=time.time() - start_time
+#print("--- %s seconds ---" % (time1))
+#print("--- %s seconds ---" % (time2))
 #print fit
-#S1=Entropy(P1)
-#Sr=Entropy(Pr)
-#x1.pdf()
-#P2=x1.P.copy()
-#S2=Entropy(P2)
-#I=S1-Sr
-#I2=S1-S2
-
-#print S1,S2,Sr
-#x.pdf()
-##print Entropy(x.P.copy())
-##print I2,I
-#print I2/I
-#print fit
-exit(0)
-#exit(0)
-
-x2=ising(size)
-x2.independent_model(m1)
-
-fit=x2.inverse_sample(m1,C1,samples,error)
-
-#x2.pdf()
-#x2.observables()
-#print
-#print x2.m-m1
-#print x2.C-C1
-#fit = max (np.max(np.abs(x2.m-m1)),np.max(np.abs(x2.C-C1)))
-#print fit
-
-
-#fit=x2.inverse_exact(m1,C1,error)
-#print
-#print x.m
-#print x.J
-#print x1.m
-#print x1.J
-#print x2.m
-#print x2.J
-x1.observables()
-x2.observables()
-print
-print np.sqrt(np.mean(np.abs(x1.h-x.h)**2))
-print np.sqrt(np.mean(np.abs(x1.J-x.J)**2))
-
-print 
-print np.sqrt(np.mean(np.abs(x2.h-x.h)**2))
-print np.sqrt(np.mean(np.abs(x2.J-x.J)**2))
-
-x.pdf()
+S1=Entropy(P1)
+Sr=Entropy(Pr)
 x1.pdf()
-x2.pdf()
-print
-print len(samples)/2.0**size
-#print Pr
-#print P1
+P2=x1.P.copy()
+S2=Entropy(P2)
+I=S1-Sr
+I2=S1-S2
 
-
-S21=Entropy(x1.P.copy())
-S22=Entropy(x2.P.copy())
-print S1,S21,S22,Sr
-print S1-Sr
-print S1-S21
-print S1-S22
-print
-print (S1-S21)/(S1-Sr)
-print (S1-S22)/(S1-Sr)
-
-
-#x1.pdf()
-#x1.observables()
-#x2.pdf()
-#x2.observables()
-
-#print
-#print x1.m-x2.m
-#print x1.C-x2.C
-#x2.pdf()
-#x2.observables()
-#x1.pdf()
-#x2.pdf()
-#print
-#print len(samples)/2.0**size
-#print Entropy(x1.P)
-#print Entropy(x2.P)
-##print
-##print x2.m
-##print x2.C
-##x2.observables()
-##print
-##print x2.m
-##print x2.C
-
-
-
-###fit=x.inverseMC(m1,C1,error)
-
-
-##x=ising(size)
-
-###print x.s
-##x.random_wiring()
-###
-##print x.h
-##print x.J
-##print
-##x.observables()
-##print x.P
-##print x.m
-##print x.C
-##print x.metastable_states()
-##x.randomize_state()
-##s=x.s.copy()
-##print x.get_valley(s)
-##exit(0)
-##x1=ising(size)
-##x1.random_wiring()
-##x1.observables()
-##m1=x1.m
-##C1=x1.C
-
-##x.independent_model(m1)
-##error=1E-2
-##fit=x.inverse_exact(m1,C1,error)
-####fit=x.inverseMC(m1,C1,error)
-
-
-##print np.mean(np.abs(x1.h-x.h))
-##print np.mean(np.abs(x1.C-x.C))
-##print fit
-
-
+print S1,S2,Sr
+x.pdf()
+#print Entropy(x.P.copy())
+#print I2,I
+print I2/I
+print fit
